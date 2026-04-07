@@ -1,10 +1,11 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>Premium Wall Calendar</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
   tailwind.config = {
@@ -20,9 +21,9 @@
 </style>
 </head>
 
-<body id="body" class="bg-gray-100 flex justify-center items-center min-h-screen p-4 transition-all">
+<body class="bg-gray-100 dark:bg-gray-900 flex justify-center items-center min-h-screen p-4 transition-all">
 
-<div class="bg-white dark:bg-gray-900 shadow-2xl rounded-2xl overflow-hidden max-w-6xl w-full transition-all">
+<div class="bg-white dark:bg-gray-900 shadow-2xl rounded-2xl overflow-hidden max-w-6xl w-full">
 
   <div class="flex flex-col md:flex-row">
 
@@ -41,7 +42,7 @@
     <!-- RIGHT -->
     <div class="md:w-1/2 p-4 flex flex-col gap-4 text-gray-800 dark:text-white">
 
-      <!-- TOP BAR -->
+      <!-- HEADER -->
       <div class="flex justify-between items-center">
         <button onclick="changeMonth(-1)">←</button>
         <h2 id="monthTitle" class="text-xl font-bold"></h2>
@@ -50,8 +51,8 @@
 
       <!-- CONTROLS -->
       <div class="flex justify-between">
-        <button onclick="toggleDark()" class="text-sm bg-gray-200 px-2 py-1 rounded">🌙</button>
-        <button onclick="changeImage()" class="text-sm bg-gray-200 px-2 py-1 rounded">🎨 Theme</button>
+        <button onclick="toggleDark()" class="text-sm bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">🌙</button>
+        <button onclick="changeImage()" class="text-sm bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">🎨 Theme</button>
       </div>
 
       <!-- DAYS -->
@@ -64,11 +65,12 @@
       <div id="calendar" class="grid grid-cols-7 gap-2"></div>
 
       <!-- RANGE -->
-      <div id="rangeLabel" class="text-sm text-blue-500"></div>
+      <div id="rangeLabel" class="text-sm text-blue-500 font-medium"></div>
 
       <!-- NOTES -->
-      <textarea id="notes" class="w-full border rounded p-2 h-20 dark:bg-gray-800"
-        placeholder="Notes..."></textarea>
+      <textarea id="notes"
+        class="w-full border rounded p-2 h-20 dark:bg-gray-800"
+        placeholder="Select a date..."></textarea>
 
     </div>
   </div>
@@ -87,16 +89,14 @@ const monthLabel = document.getElementById("monthLabel");
 const rangeLabel = document.getElementById("rangeLabel");
 const themeBar = document.getElementById("themeBar");
 const heroImage = document.getElementById("heroImage");
-const body = document.getElementById("body");
 
 // THEMES
 const images = [
   "https://images.unsplash.com/photo-1501785888041-af3ef285b470",
-  // "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee",
   "https://images.unsplash.com/photo-1507525428034-b723cf961d3e"
 ];
 
-const colors = ["#2563eb","#059669","#ea580c"];
+const colors = ["#2563eb","#059669"];
 
 let themeIndex = 0;
 
@@ -106,7 +106,7 @@ function toggleDark() {
   localStorage.setItem("theme", isDark ? "dark" : "light");
 }
 
-// On load
+// Load saved theme
 if (localStorage.getItem("theme") === "dark") {
   document.documentElement.classList.add("dark");
 }
@@ -118,19 +118,45 @@ function changeImage(){
   themeBar.style.background = colors[themeIndex];
 }
 
-// STORAGE KEY
+// KEY SYSTEM (FINAL FIX)
 function key(){
-  if(!startDate || !endDate) return "";
-  return startDate.toDateString()+"_"+endDate.toDateString();
+  if(startDate && endDate){
+    return `range_${startDate.toDateString()}_${endDate.toDateString()}`;
+  }
+  else if(startDate){
+    return `single_${startDate.toDateString()}`;
+  }
+  return "";
 }
 
-// NOTES
-notesInput.addEventListener("input",()=>{
-  if(key()) localStorage.setItem(key(),notesInput.value);
+// SAVE NOTES
+notesInput.addEventListener("input", () => {
+  const k = key();
+  if(k){
+    localStorage.setItem(k, notesInput.value);
+  }
 });
 
+// LOAD NOTES
 function loadNotes(){
-  notesInput.value = localStorage.getItem(key()) || "";
+  const k = key();
+  notesInput.value = k ? localStorage.getItem(k) || "" : "";
+}
+
+// LABEL + UX
+function updateLabel(){
+  if(startDate && endDate){
+    rangeLabel.innerText = `📅 ${startDate.toDateString()} → ${endDate.toDateString()}`;
+    notesInput.placeholder = "Notes for selected range...";
+  } 
+  else if(startDate){
+    rangeLabel.innerText = `📍 ${startDate.toDateString()}`;
+    notesInput.placeholder = "Notes for selected day...";
+  } 
+  else {
+    rangeLabel.innerText = "";
+    notesInput.placeholder = "Select a date...";
+  }
 }
 
 // RENDER
@@ -170,12 +196,17 @@ function renderCalendar(){
     else if(startDate && endDate && date>startDate && date<endDate){
       div.classList.add("bg-blue-200");
     }
+    else{
+      div.classList.add("hover:bg-gray-200","dark:hover:bg-gray-700");
+    }
 
-    // DRAG LOGIC
+    // DRAG SELECT
     div.onmousedown=()=>{
       startDate=date;
       endDate=null;
       isDragging=true;
+      updateLabel();
+      loadNotes();
       renderCalendar();
     };
 
@@ -199,13 +230,6 @@ function renderCalendar(){
 }
 
 document.body.onmouseup=()=>isDragging=false;
-
-// RANGE LABEL
-function updateLabel(){
-  if(startDate && endDate){
-    rangeLabel.innerText=`${startDate.toDateString()} → ${endDate.toDateString()}`;
-  }
-}
 
 // MONTH NAV
 function changeMonth(offset){
